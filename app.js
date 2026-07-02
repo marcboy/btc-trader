@@ -81,7 +81,6 @@ function loadFromStorage() {
   if (savedSim) {
     state.simPortfolio = JSON.parse(savedSim);
   } else {
-    // Reset back to defaults if no previous session storage exists
     state.simPortfolio = { usd: 10000, btc: 0, avgBuyPrice: 0, totalInvested: 0, activePositionId: null };
   }
   
@@ -101,11 +100,23 @@ function loadFromStorage() {
     state.strategy = config.strategy || 'swing';
     state.threshold = Number(config.threshold) || 10;
     state.tradeAmount = Number(config.tradeAmount) || 100;
+    state.referencePrice = config.referencePrice !== undefined ? Number(config.referencePrice) : null;
+    state.buyTargetPrice = config.buyTargetPrice !== undefined ? Number(config.buyTargetPrice) : null;
+    state.sellTargetPrice = config.sellTargetPrice !== undefined ? Number(config.sellTargetPrice) : null;
+    state.mode = config.mode || 'simulated';
   } else {
     state.strategy = 'swing';
     state.threshold = 10;
     state.tradeAmount = 100;
+    state.referencePrice = null;
+    state.buyTargetPrice = null;
+    state.sellTargetPrice = null;
+    state.mode = 'simulated';
   }
+
+  // Sync mode selector UI element
+  const modeSelect = document.getElementById('select-mode');
+  if (modeSelect) modeSelect.value = state.mode;
 }
 
 // Save state to localStorage partitioned by user session
@@ -119,7 +130,11 @@ function saveState() {
   localStorage.setItem(`${pfx}apex_bot_config`, JSON.stringify({
     strategy: state.strategy,
     threshold: state.threshold,
-    tradeAmount: state.tradeAmount
+    tradeAmount: state.tradeAmount,
+    referencePrice: state.referencePrice,
+    buyTargetPrice: state.buyTargetPrice,
+    sellTargetPrice: state.sellTargetPrice,
+    mode: state.mode
   }));
 
   // Sync logs online with proxy server for easy retrieval
