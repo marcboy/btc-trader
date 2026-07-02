@@ -979,6 +979,14 @@ function setupEventListeners() {
       exportToCSV();
     });
   }
+
+  // View Online Logs
+  const btnViewLogs = document.getElementById('btn-view-logs');
+  if (btnViewLogs) {
+    btnViewLogs.addEventListener('click', () => {
+      window.open(`${state.apiConfig.proxyUrl}/api/logs`, '_blank');
+    });
+  }
 }
 
 // Start / Pause Bot helper
