@@ -562,6 +562,17 @@ function initChart() {
               return `Price: $${context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             }
           }
+        },
+        zoom: {
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            mode: 'xy',
+          },
+          pan: {
+            enabled: true,
+            mode: 'xy',
+          }
         }
       },
       scales: {
@@ -1039,6 +1050,16 @@ function setupEventListeners() {
   if (btnViewLogs) {
     btnViewLogs.addEventListener('click', () => {
       window.open(`${state.apiConfig.proxyUrl}/api/logs`, '_blank');
+    });
+  }
+
+  // Reset Chart Zoom
+  const btnResetZoom = document.getElementById('btn-reset-zoom');
+  if (btnResetZoom) {
+    btnResetZoom.addEventListener('click', () => {
+      if (priceChart) {
+        priceChart.resetZoom();
+      }
     });
   }
 }

@@ -16,6 +16,8 @@
   
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
 </head>
 <body>
 
@@ -168,9 +170,12 @@
       
       <!-- Real-time Chart Card -->
       <div class="card chart-card">
-        <div class="card-title">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>Real-time Ticker & Targets</span>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Ticks plotted sequentially</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="btn-reset-zoom" class="btn btn-secondary btn-xs" style="width: auto; padding: 0.15rem 0.4rem; font-size: 0.7rem; background: rgba(255,255,255,0.04);">Reset Zoom</button>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Ticks plotted sequentially</span>
+          </div>
         </div>
         
         <div class="chart-container">
@@ -278,7 +283,7 @@
 
   <!-- Version Badge -->
   <div id="version-badge" style="position: fixed; bottom: 10px; right: 10px; font-size: 0.65rem; color: var(--text-muted); background: rgba(0,0,0,0.4); padding: 4px 8px; border-radius: 4px; pointer-events: none; z-index: 9999;">
-    Built: 2026-07-02 12:35:40
+    Built: 2026-07-02 12:38:40
   </div>
 
   <!-- Main Logic Script -->
