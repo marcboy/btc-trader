@@ -756,6 +756,7 @@ function renderTradeLogs() {
       
     return `
       <tr>
+        <td><code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${log.id ? log.id.replace('tx_', '') : '-'}</code></td>
         <td>${logDate}</td>
         <td><span class="log-type ${log.type.toLowerCase()}">${log.type}</span></td>
         <td>$${log.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
