@@ -828,9 +828,10 @@ function setupEventListeners() {
     resetRefBtn.addEventListener('click', () => {
       if (state.currentPrice) {
         state.referencePrice = state.currentPrice;
+        state.buyTargetPrice = state.currentPrice; // Force reset buy target to spot
         recalculateTargets();
         updateUI();
-        logSystemMessage(`Reference baseline price reset manually to: $${state.currentPrice.toFixed(2)}`);
+        logSystemMessage(`Reference baseline and Buy Target reset manually to: $${state.currentPrice.toFixed(2)}`);
       }
     });
   }
@@ -875,6 +876,64 @@ function setupEventListeners() {
     });
   }
 
+  // Adjust targets by +/- 10 USD on button click
+  const btnBuyDown = document.getElementById('btn-buy-down');
+  const btnBuyUp = document.getElementById('btn-buy-up');
+  if (btnBuyDown && btnBuyUp) {
+    btnBuyDown.addEventListener('click', () => {
+      const val = (state.buyTargetPrice || state.currentPrice) - 10;
+      state.buyTargetPrice = val;
+      if (state.referencePrice) {
+        state.threshold = Math.abs(state.referencePrice - val);
+        const threshEl = document.getElementById('input-threshold');
+        if (threshEl) threshEl.value = Math.round(state.threshold);
+      }
+      saveState();
+      updateUI();
+      if (priceChart) updateChartData();
+    });
+    btnBuyUp.addEventListener('click', () => {
+      const val = (state.buyTargetPrice || state.currentPrice) + 10;
+      state.buyTargetPrice = val;
+      if (state.referencePrice) {
+        state.threshold = Math.abs(state.referencePrice - val);
+        const threshEl = document.getElementById('input-threshold');
+        if (threshEl) threshEl.value = Math.round(state.threshold);
+      }
+      saveState();
+      updateUI();
+      if (priceChart) updateChartData();
+    });
+  }
+
+  const btnSellDown = document.getElementById('btn-sell-down');
+  const btnSellUp = document.getElementById('btn-sell-up');
+  if (btnSellDown && btnSellUp) {
+    btnSellDown.addEventListener('click', () => {
+      const val = (state.sellTargetPrice || state.currentPrice) - 10;
+      state.sellTargetPrice = val;
+      if (state.referencePrice) {
+        state.threshold = Math.abs(val - state.referencePrice);
+        const threshEl = document.getElementById('input-threshold');
+        if (threshEl) threshEl.value = Math.round(state.threshold);
+      }
+      saveState();
+      updateUI();
+      if (priceChart) updateChartData();
+    });
+    btnSellUp.addEventListener('click', () => {
+      const val = (state.sellTargetPrice || state.currentPrice) + 10;
+      state.sellTargetPrice = val;
+      if (state.referencePrice) {
+        state.threshold = Math.abs(val - state.referencePrice);
+        const threshEl = document.getElementById('input-threshold');
+        if (threshEl) threshEl.value = Math.round(state.threshold);
+      }
+      saveState();
+      updateUI();
+      if (priceChart) updateChartData();
+    });
+  }
   
   // Mode selection (Simulated vs Live)
   const modeSelect = document.getElementById('select-mode');
