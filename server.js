@@ -159,6 +159,35 @@ const server = http.createServer((req, res) => {
       }
     });
   } 
+  // Handle retrieving debug logs
+  else if (req.method === 'GET' && req.url === '/api/logs') {
+    const logsPath = path.join(__dirname, 'debug_logs.json');
+    fs.readFile(logsPath, 'utf8', (err, data) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      if (err) {
+        res.end(JSON.stringify([]));
+      } else {
+        res.end(data);
+      }
+    });
+  }
+  // Handle writing debug logs
+  else if (req.method === 'POST' && req.url === '/api/logs') {
+    let bodyData = '';
+    req.on('data', chunk => { bodyData += chunk.toString(); });
+    req.on('end', () => {
+      const logsPath = path.join(__dirname, 'debug_logs.json');
+      fs.writeFile(logsPath, bodyData, 'utf8', (err) => {
+        if (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        }
+      });
+    });
+  } 
   // Handle serving static frontend files
   else if (req.method === 'GET') {
     let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);

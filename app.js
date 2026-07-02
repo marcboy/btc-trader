@@ -88,7 +88,7 @@ function loadFromStorage() {
   }
 }
 
-// Save state to localStorage
+// Save state to localStorage and sync logs online
 function saveState() {
   localStorage.setItem('apex_sim_portfolio', JSON.stringify(state.simPortfolio));
   localStorage.setItem('apex_trade_log', JSON.stringify(state.tradeLog));
@@ -98,6 +98,13 @@ function saveState() {
     threshold: state.threshold,
     tradeAmount: state.tradeAmount
   }));
+
+  // Sync logs online with proxy server for easy retrieval
+  fetch(`${state.apiConfig.proxyUrl}/api/logs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(state.tradeLog)
+  }).catch(err => console.warn('Could not sync logs to server:', err));
 }
 
 // Connect to Coinbase Pro / Advanced WebSocket
