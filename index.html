@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apex BTC Auto-Trader & Monitor</title>
+  <meta name="description" content="A real-time Bitcoin price monitor and automated trading bot simulator featuring configurable threshold triggers ($10 price change), live WebSocket price feeds, and local API integrations.">
+  
+  <!-- Premium Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Header / Navigation Bar -->
+  <header>
+    <div class="logo-container">
+      <div class="logo-icon">₿</div>
+      <div class="logo-text">
+        <h1>APEX BTC AUTO-TRADER</h1>
+        <span>Precision Algorithmic Scalper</span>
+      </div>
+    </div>
+    
+    <div class="header-status">
+      <div id="ws-status" class="status-badge">
+        <span class="dot disconnected"></span> Connecting...
+      </div>
+      <div id="bot-running-status" class="status-badge">
+        <span class="dot paused"></span> Bot Paused
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Content -->
+  <main>
+    
+    <!-- Left Column: Controls & Portfolio -->
+    <section class="sidebar">
+      
+      <!-- Portfolio & Live Price Card -->
+      <div class="card" id="portfolio-card">
+        <div class="card-title">
+          <span>Market & Portfolio</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">BTC-USD</span>
+        </div>
+        
+        <div class="price-display">
+          <label>Bitcoin Spot Price</label>
+          <div class="price-value-container">
+            <span id="price-val" class="price-value">$-.--</span>
+            <span class="price-change up" id="ui-price-change">Live</span>
+          </div>
+        </div>
+        
+        <div class="portfolio-grid">
+          <div class="stat-box">
+            <div class="stat-label">Net Worth</div>
+            <div class="stat-val" id="ui-net-worth">$10,000.00</div>
+            <div class="stat-val-small">USD + BTC Val</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">USD Cash</div>
+            <div class="stat-val" id="ui-usd-bal">$10,000.00</div>
+            <div class="stat-val-small">Available to Buy</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">BTC Holding</div>
+            <div class="stat-val" id="ui-btc-bal">0.000000 BTC</div>
+            <div class="stat-val-small">Asset Balance</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Avg Buy Price</div>
+            <div class="stat-val" id="ui-avg-cost">-</div>
+            <div class="stat-val-small">Cost Basis</div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+          <button class="btn btn-secondary btn-xs" id="btn-reset-portfolio" style="width: auto; float: right;">Reset Virtual Cash</button>
+        </div>
+      </div>
+      
+      <!-- Algorithmic Control Panel -->
+      <div class="card" id="trading-engine-card">
+        <div class="card-title">Trading Engine</div>
+        
+        <div class="control-group">
+          <label for="select-mode">Execution Mode</label>
+          <select id="select-mode">
+            <option value="simulated">Simulation (Paper Trading)</option>
+            <option value="live">Live Exchange (Coinbase API)</option>
+          </select>
+        </div>
+        
+        <div class="control-group">
+          <label for="select-strategy">Strategy logic</label>
+          <select id="select-strategy">
+            <option value="swing">Swing Grid (Buy low, Sell high)</option>
+            <option value="trend">Trend Following (Buy high, Sell low)</option>
+            <option value="cycle">Sequential Scalper (Buy Immediate, Sell +$10)</option>
+          </select>
+        </div>
+        
+        <div class="control-group">
+          <label for="input-threshold">Trigger Threshold ($)</label>
+          <div class="input-with-unit">
+            <input type="number" id="input-threshold" value="10" min="1" step="1">
+            <span class="input-unit">USD</span>
+          </div>
+          <span style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+            Triggers trade once price moves by this amount.
+          </span>
+        </div>
+        
+        <div class="control-group">
+          <label for="input-trade-amount">Trade Size per Trigger ($)</label>
+          <div class="input-with-unit">
+            <input type="number" id="input-trade-amount" value="100" min="10" step="10">
+            <span class="input-unit">USD</span>
+          </div>
+        </div>
+        
+        <div class="control-group" style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="margin-bottom: 0;">Baseline Reference</label>
+            <button class="btn btn-secondary btn-xs" id="btn-reset-ref" style="width: auto; padding: 0.15rem 0.4rem;">Reset to Spot</button>
+          </div>
+          <div class="target-grid">
+            <div class="target-card buy">
+              <div class="stat-label">BUY TARGET</div>
+              <div class="target-val" id="ui-buy-target">Waiting...</div>
+            </div>
+            <div class="target-card sell">
+              <div class="stat-label">SELL TARGET</div>
+              <div class="target-val" id="ui-sell-target">Waiting...</div>
+            </div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: center;">
+            Reference Base: <span id="ui-ref-price" style="font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums;">-</span>
+          </div>
+        </div>
+        
+        <div class="control-group" style="margin-top: 1.5rem;">
+          <button class="btn btn-primary" id="btn-toggle-bot">Start Bot</button>
+        </div>
+      </div>
+      
+    </section>
+    
+    <!-- Right Column: Graphs, Logs, Details -->
+    <section class="content-area">
+      
+      <!-- Real-time Chart Card -->
+      <div class="card chart-card">
+        <div class="card-title">
+          <span>Real-time Ticker & Targets</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Ticks plotted sequentially</span>
+        </div>
+        
+        <div class="chart-container">
+          <canvas id="price-chart-canvas"></canvas>
+        </div>
+      </div>
+      
+      <!-- Stats & Trade Execution Log Card -->
+      <div class="card logs-card">
+        <div class="card-title">
+          <span>Trade Execution History</span>
+          <div class="table-header-actions">
+            <button class="btn btn-secondary btn-xs" id="btn-export-logs">Export CSV</button>
+            <button class="btn btn-secondary btn-xs" id="btn-clear-logs">Clear Logs</button>
+          </div>
+        </div>
+        
+        <div class="portfolio-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div class="stat-box" style="padding: 0.5rem 0.75rem;">
+            <div class="stat-label">Total Executions</div>
+            <div class="stat-val" id="stat-total-trades">0</div>
+          </div>
+          <div class="stat-box" style="padding: 0.5rem 0.75rem;">
+            <div class="stat-label">Profitable Sells (Win Rate)</div>
+            <div class="stat-val" id="stat-profitable-trades">0 / 0 (0%)</div>
+          </div>
+          <div class="stat-box" style="padding: 0.5rem 0.75rem;">
+            <div class="stat-label">Total Realized Profit</div>
+            <div class="stat-val" id="stat-total-profit">$0.00</div>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Price (USD)</th>
+                <th>Amount (BTC)</th>
+                <th>Total USD</th>
+                <th>Realized P&L</th>
+                <th>Cumulative Profit</th>
+                <th>Mode</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table-body">
+              <!-- Rendered dynamically from app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Live Log Terminal Card -->
+      <div class="card" style="display: flex; flex-direction: column; max-height: 220px;">
+        <div class="card-title">Bot Action Feed Console</div>
+        <div id="status-log-console" style="flex: 1; overflow-y: auto; font-family: monospace; line-height: 1.5; color: #34d399; background: #040609; padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-size: 0.75rem; max-height: 150px; display: flex; flex-direction: column-reverse;">
+          <div><span style="color: var(--text-muted); margin-right: 0.5rem;">[BOT]</span> System initialized. WebSocket ready. Press "Start Bot" to activate threshold automation.</div>
+        </div>
+      </div>
+      
+      <!-- Collapsible API Settings (For Live Exchange Option) -->
+      <div class="card" id="settings-panel-card">
+        <div class="settings-toggle collapsed" id="settings-accordion-header">
+          <span style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">🔑 Coinbase Live Exchange credentials (CORS Bypassed Setup)</span>
+          <span class="arrow">▼</span>
+        </div>
+        
+        <div class="settings-content collapsed" id="settings-accordion-content">
+          <div class="alert-info">
+            <strong>Security Notice:</strong> Your API Credentials are saved exclusively in your browser's local sandbox storage (`localStorage`). They are never uploaded to any third-party servers. Since Web Browsers restrict direct exchange queries due to CORS policies, a lightweight local Node.js proxy server is required to sign requests and execute real orders safely.
+          </div>
+          
+          <div class="settings-grid">
+            <div class="control-group">
+              <label for="input-api-key">Coinbase API Key</label>
+              <input type="password" id="input-api-key" placeholder="Enter Coinbase API Key Name">
+            </div>
+            <div class="control-group">
+              <label for="input-api-secret">Coinbase API Secret</label>
+              <input type="password" id="input-api-secret" placeholder="Enter Coinbase API Secret Key">
+            </div>
+          </div>
+          
+          <div class="settings-grid" style="grid-template-columns: 2fr 1fr;">
+            <div class="control-group">
+              <label for="input-proxy-url">Local Proxy Backend Server URL</label>
+              <input type="text" id="input-proxy-url" value="http://localhost:3000" placeholder="http://localhost:3000">
+            </div>
+            <div class="control-group" style="display: flex; align-items: flex-end;">
+              <button class="btn btn-success" id="btn-save-api" style="padding: 0.65rem;">Save Config</button>
+            </div>
+          </div>
+          
+          <div class="info-text">
+            To run the API Proxy locally: run <code>node server.js</code> in this directory. Read the <a href="README.md" target="_blank">instructions in README.md</a> for setup details and security settings.
+          </div>
+        </div>
+      </div>
+      
+    </section>
+  </main>
+
+  <!-- Main Logic Script -->
+  <script src="app.js"></script>
+</body>
+</html>
