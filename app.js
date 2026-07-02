@@ -609,8 +609,8 @@ function updateUI() {
   
   // 2. Targets UI
   const refPriceEl = document.getElementById('ui-ref-price');
-  const buyTargetEl = document.getElementById('ui-buy-target');
-  const sellTargetEl = document.getElementById('ui-sell-target');
+  const buyTargetInput = document.getElementById('input-buy-target');
+  const sellTargetInput = document.getElementById('input-sell-target');
   
   const liveTrades = state.tradeLog.filter(t => t.status === 'live');
   const holdsBtc = state.mode === 'simulated'
@@ -619,25 +619,27 @@ function updateUI() {
   
   if (refPriceEl) refPriceEl.textContent = state.referencePrice ? `$${state.referencePrice.toFixed(2)}` : 'Waiting...';
   
-  if (buyTargetEl) {
+  // Update inputs if active elements are not currently focused
+  if (buyTargetInput && document.activeElement !== buyTargetInput) {
     if (state.strategy === 'cycle') {
-      buyTargetEl.textContent = holdsBtc ? 'N/A' : 'IMMEDIATE';
-      buyTargetEl.style.color = holdsBtc ? 'var(--text-muted)' : 'var(--success)';
+      buyTargetInput.value = '';
+      buyTargetInput.placeholder = holdsBtc ? 'N/A' : 'IMMEDIATE';
     } else {
-      buyTargetEl.textContent = state.buyTargetPrice ? `$${state.buyTargetPrice.toFixed(2)}` : 'Waiting...';
-      buyTargetEl.style.color = '';
+      buyTargetInput.value = state.buyTargetPrice ? Math.round(state.buyTargetPrice) : '';
+      buyTargetInput.placeholder = 'Waiting...';
     }
   }
   
-  if (sellTargetEl) {
+  if (sellTargetInput && document.activeElement !== sellTargetInput) {
     if (state.strategy === 'cycle' && !holdsBtc) {
-      sellTargetEl.textContent = 'Waiting for Buy...';
-      sellTargetEl.style.color = 'var(--text-muted)';
+      sellTargetInput.value = '';
+      sellTargetInput.placeholder = 'Waiting Buy...';
     } else {
-      sellTargetEl.textContent = state.sellTargetPrice ? `$${state.sellTargetPrice.toFixed(2)}` : 'Waiting...';
-      sellTargetEl.style.color = '';
+      sellTargetInput.value = state.sellTargetPrice ? Math.round(state.sellTargetPrice) : '';
+      sellTargetInput.placeholder = 'Waiting...';
     }
   }
+
   
   // 3. Portfolio Card
   const netWorthEl = document.getElementById('ui-net-worth');
@@ -831,6 +833,47 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Editable Target Inputs
+  const buyTargetInput = document.getElementById('input-buy-target');
+  if (buyTargetInput) {
+    buyTargetInput.addEventListener('change', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val > 0) {
+        state.buyTargetPrice = val;
+        // Adjust threshold based on new target difference if strategy is active
+        if (state.referencePrice) {
+          state.threshold = Math.abs(state.referencePrice - val);
+          const threshEl = document.getElementById('input-threshold');
+          if (threshEl) threshEl.value = Math.round(state.threshold);
+        }
+        saveState();
+        updateUI();
+        if (priceChart) updateChartData();
+        logSystemMessage(`Buy Target manually updated to: $${val.toFixed(2)}`);
+      }
+    });
+  }
+
+  const sellTargetInput = document.getElementById('input-sell-target');
+  if (sellTargetInput) {
+    sellTargetInput.addEventListener('change', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val > 0) {
+        state.sellTargetPrice = val;
+        if (state.referencePrice) {
+          state.threshold = Math.abs(val - state.referencePrice);
+          const threshEl = document.getElementById('input-threshold');
+          if (threshEl) threshEl.value = Math.round(state.threshold);
+        }
+        saveState();
+        updateUI();
+        if (priceChart) updateChartData();
+        logSystemMessage(`Sell Target manually updated to: $${val.toFixed(2)}`);
+      }
+    });
+  }
+
   
   // Mode selection (Simulated vs Live)
   const modeSelect = document.getElementById('select-mode');
