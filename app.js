@@ -1160,18 +1160,22 @@ function exportToCSV() {
 }
 
 // Render dynamic session overlay list and mount actions
-function initSessionOverlay() {
+async function initSessionOverlay() {
   const container = document.getElementById('session-list');
   const overlay = document.getElementById('session-overlay');
   if (!container || !overlay) return;
 
-  // Load custom session names from localStorage if they exist
-  sessionState.sessions.forEach(sess => {
-    const savedName = localStorage.getItem(`session_name_${sess.id}`);
-    if (savedName) sess.name = savedName;
-  });
-
   overlay.style.display = 'flex';
+  
+  // Fetch session configurations from server
+  try {
+    const res = await fetch(`${state.apiConfig.proxyUrl || window.location.origin}/api/sessions`);
+    if (res.ok) {
+      sessionState.sessions = await res.json();
+    }
+  } catch (err) {
+    console.warn("Could not load sessions from server, using local fallbacks:", err);
+  }
 
   container.innerHTML = sessionState.sessions.map(sess => `
     <div style="display: flex; gap: 0.5rem; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 0.75rem; border-radius: 8px;">
@@ -1182,17 +1186,25 @@ function initSessionOverlay() {
 
   // Attach click listeners to selection buttons and name updates
   container.querySelectorAll('.select-session-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const id = parseInt(e.target.dataset.id);
       const nameInput = document.getElementById(`session-name-input-${id}`);
       const sessionName = nameInput ? nameInput.value.trim() : `Trader ${id}`;
       
-      // Save name customization
-      localStorage.setItem(`session_name_${id}`, sessionName);
-      
-      // Load session
+      // Update local cache
       sessionState.currentSessionId = id;
       sessionState.sessions.find(s => s.id === id).name = sessionName;
+      
+      // Save name customization to server
+      try {
+        await fetch(`${state.apiConfig.proxyUrl || window.location.origin}/api/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sessionState.sessions)
+        });
+      } catch (err) {
+        console.warn("Could not save session configurations to server:", err);
+      }
       
       // Close modal overlay and load scoped portfolio settings
       overlay.style.display = 'none';

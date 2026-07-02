@@ -188,6 +188,41 @@ const server = http.createServer((req, res) => {
       });
     });
   } 
+  // Handle retrieving sessions config
+  else if (req.method === 'GET' && req.url === '/api/sessions') {
+    const sessionsPath = path.join(__dirname, 'sessions.json');
+    fs.readFile(sessionsPath, 'utf8', (err, data) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      if (err) {
+        res.end(JSON.stringify([
+          { id: 1, name: 'Trader 1' },
+          { id: 2, name: 'Trader 2' },
+          { id: 3, name: 'Trader 3' },
+          { id: 4, name: 'Trader 4' },
+          { id: 5, name: 'Trader 5' }
+        ]));
+      } else {
+        res.end(data);
+      }
+    });
+  }
+  // Handle saving sessions config
+  else if (req.method === 'POST' && req.url === '/api/sessions') {
+    let bodyData = '';
+    req.on('data', chunk => { bodyData += chunk.toString(); });
+    req.on('end', () => {
+      const sessionsPath = path.join(__dirname, 'sessions.json');
+      fs.writeFile(sessionsPath, bodyData, 'utf8', (err) => {
+        if (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        }
+      });
+    });
+  } 
   // Handle serving static frontend files
   else if (req.method === 'GET') {
     let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
