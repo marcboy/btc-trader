@@ -206,15 +206,18 @@ function recalculateTargets() {
   if (state.referencePrice === null) return;
   
   if (state.strategy === 'swing') {
-    // Swing: Buy when price goes DOWN by threshold, Sell when price goes UP by threshold
-    state.buyTargetPrice = state.referencePrice - state.threshold;
+    // Sell target is driven by threshold (price rises by threshold)
     state.sellTargetPrice = state.referencePrice + state.threshold;
+    // Buy target is manually adjusted by the user; only set if not initialized
+    if (state.buyTargetPrice === null) {
+      state.buyTargetPrice = state.referencePrice - state.threshold;
+    }
   } else if (state.strategy === 'trend') {
-    // Trend: Buy when price goes UP by threshold, Sell when price goes DOWN by threshold
-    state.buyTargetPrice = state.referencePrice + state.threshold;
     state.sellTargetPrice = state.referencePrice - state.threshold;
+    if (state.buyTargetPrice === null) {
+      state.buyTargetPrice = state.referencePrice + state.threshold;
+    }
   } else if (state.strategy === 'cycle') {
-    // Sequential Scalper: Buy is immediate, Sell is baseline + threshold
     state.buyTargetPrice = null;
     state.sellTargetPrice = state.referencePrice + state.threshold;
   }
@@ -225,8 +228,6 @@ function runTradingBot() {
   if (state.currentPrice === null || state.referencePrice === null) return;
   
   const current = state.currentPrice;
-  const ref = state.referencePrice;
-  const diff = current - ref;
   
   // Check holdings to see if we possess BTC
   const liveTrades = state.tradeLog.filter(t => t.status === 'live');
@@ -235,45 +236,38 @@ function runTradingBot() {
     : (liveTrades.length > 0 && liveTrades[0].type === 'BUY');
   
   if (state.strategy === 'swing') {
-    // Swing Grid Strategy: Buy low, Sell high
-    
-    // BUY Trigger: Price drops below buyTargetPrice (down by $10 or more)
-    if (current <= state.buyTargetPrice) {
+    // BUY Trigger: Reaches manual buy target set by the user
+    if (!holdsBtc && state.buyTargetPrice && current <= state.buyTargetPrice) {
       executeTrade('BUY', current);
       state.referencePrice = current;
+      // Preserve buy target as user-configured or unset to let them adjust it for the next run
       recalculateTargets();
     } 
-    // SELL Trigger: Price rises above sellTargetPrice (up by $10 or more)
-    else if (current >= state.sellTargetPrice) {
+    // SELL Trigger: Price rises above sellTargetPrice (driven by threshold)
+    else if (holdsBtc && state.sellTargetPrice && current >= state.sellTargetPrice) {
       executeTrade('SELL', current);
       state.referencePrice = current;
       recalculateTargets();
     }
   } else if (state.strategy === 'trend') {
-    // Trend Following Strategy: Buy high (breakout), Sell low (breakdown)
-    
-    // BUY Trigger: Price breaks above buyTargetPrice (up by $10 or more)
-    if (current >= state.buyTargetPrice) {
+    // BUY Trigger: Price breaks above user-configured target
+    if (!holdsBtc && state.buyTargetPrice && current >= state.buyTargetPrice) {
       executeTrade('BUY', current);
       state.referencePrice = current;
       recalculateTargets();
     } 
-    // SELL Trigger: Price drops below sellTargetPrice (down by $10 or more)
-    else if (current <= state.sellTargetPrice) {
+    // SELL Trigger: Price drops below sellTargetPrice (driven by threshold)
+    else if (holdsBtc && state.sellTargetPrice && current <= state.sellTargetPrice) {
       executeTrade('SELL', current);
       state.referencePrice = current;
       recalculateTargets();
     }
   } else if (state.strategy === 'cycle') {
-    // Sequential Scalper Strategy: Buy immediate, Sell at +threshold, repeat
-    
     if (!holdsBtc) {
-      // Buy immediately!
       executeTrade('BUY', current);
       state.referencePrice = current;
       recalculateTargets();
     } else {
-      // Wait for price to rise by threshold to sell
       if (current >= state.sellTargetPrice) {
         executeTrade('SELL', current);
         state.referencePrice = current;
