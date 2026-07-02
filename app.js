@@ -236,11 +236,10 @@ function runTradingBot() {
     : (liveTrades.length > 0 && liveTrades[0].type === 'BUY');
   
   if (state.strategy === 'swing') {
-    // BUY Trigger: Reaches manual buy target set by the user
-    if (!holdsBtc && state.buyTargetPrice && current <= state.buyTargetPrice) {
+    // BUY Trigger: Reaches manual buy target + threshold offset
+    if (!holdsBtc && state.buyTargetPrice && current <= (state.buyTargetPrice + state.threshold)) {
       executeTrade('BUY', current);
       state.referencePrice = current;
-      // Preserve buy target as user-configured or unset to let them adjust it for the next run
       recalculateTargets();
     } 
     // SELL Trigger: Price rises above sellTargetPrice (driven by threshold)
@@ -250,8 +249,8 @@ function runTradingBot() {
       recalculateTargets();
     }
   } else if (state.strategy === 'trend') {
-    // BUY Trigger: Price breaks above user-configured target
-    if (!holdsBtc && state.buyTargetPrice && current >= state.buyTargetPrice) {
+    // BUY Trigger: Price breaks above manual buy target + threshold offset
+    if (!holdsBtc && state.buyTargetPrice && current >= (state.buyTargetPrice + state.threshold)) {
       executeTrade('BUY', current);
       state.referencePrice = current;
       recalculateTargets();
@@ -485,7 +484,8 @@ function initChart() {
       
       // Draw Buy Target Line
       if (state.buyTargetPrice) {
-        const yBuy = y.getPixelForValue(state.buyTargetPrice);
+        const buyTargetWithThreshold = state.buyTargetPrice + state.threshold;
+        const yBuy = y.getPixelForValue(buyTargetWithThreshold);
         if (yBuy >= top && yBuy <= bottom) {
           ctx.strokeStyle = 'rgba(16, 185, 129, 0.6)';
           ctx.lineWidth = 1.5;
@@ -496,7 +496,7 @@ function initChart() {
           ctx.stroke();
           ctx.fillStyle = 'rgba(16, 185, 129, 0.9)';
           ctx.font = '10px Outfit';
-          ctx.fillText(`BUY TARGET: $${state.buyTargetPrice.toFixed(2)}`, left + 10, yBuy - 4);
+          ctx.fillText(`BUY TARGET: $${buyTargetWithThreshold.toFixed(2)}`, left + 10, yBuy - 4);
         }
       }
       
