@@ -5,8 +5,11 @@
 const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
-const PORT = 3000;
+// Port should bind to process.env.PORT for Render hosting compatibility
+const PORT = process.env.PORT || 3000;
 
 // Helper to generate UUID-like client order IDs
 function generateUUID() {
@@ -60,14 +63,12 @@ const server = http.createServer((req, res) => {
         // Define Coinbase order configuration
         let orderConfig = {};
         if (uppercaseSide === 'BUY') {
-          // Quote size represents USD to spend
           orderConfig = {
             market_market_ioc: {
               quote_size: parseFloat(amount).toFixed(2)
             }
           };
         } else {
-          // Base size represents BTC to sell. Convert USD target amount to BTC equivalent
           const baseSize = (parseFloat(amount) / parseFloat(price)).toFixed(6);
           orderConfig = {
             market_market_ioc: {
@@ -117,19 +118,17 @@ const server = http.createServer((req, res) => {
               const cbJson = JSON.parse(responseData);
               
               if (statusCode >= 200 && statusCode < 300) {
-                // Success
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                   success: true,
                   orderId: cbJson.order_id,
                   price: price,
-                  size: uppercaseSide === 'BUY' ? (amount / price) : (amount / price), // Estimated size or fetched
+                  size: uppercaseSide === 'BUY' ? (amount / price) : (amount / price),
                   funds: amount,
                   pnl: 0,
                   raw: cbJson
                 }));
               } else {
-                // Coinbase API error
                 console.error(`[Proxy Error] Coinbase rejected request:`, cbJson);
                 res.writeHead(statusCode, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ 
@@ -159,8 +158,50 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ success: false, error: 'Invalid request payload' }));
       }
     });
+  } 
+  // Handle serving static frontend files
+  else if (req.method === 'GET') {
+    let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
+    const extname = path.extname(filePath);
+    
+    let contentType = 'text/html';
+    switch (extname) {
+      case '.js':
+        contentType = 'text/javascript';
+        break;
+      case '.css':
+        contentType = 'text/css';
+        break;
+      case '.json':
+        contentType = 'application/json';
+        break;
+      case '.png':
+        contentType = 'image/png';
+        break;
+      case '.jpg':
+        contentType = 'image/jpg';
+        break;
+      case '.svg':
+        contentType = 'image/svg+xml';
+        break;
+    }
+
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        if (err.code === 'ENOENT') {
+          // If file not found, fallback to index.html for SPA routing, or 404
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `File not found: ${req.url}` }));
+        } else {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Server error: ${err.code}` }));
+        }
+      } else {
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(content, 'utf-8');
+      }
+    });
   } else {
-    // 404 for other endpoints
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Endpoint not found' }));
   }
@@ -169,7 +210,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`=======================================================`);
   console.log(`   APEX BTC TRADING BOT PROXY SERVER RUNNING          `);
-  console.log(`   Listening on: http://localhost:${PORT}               `);
-  console.log(`   No Node dependencies required. Keep running.       `);
+  console.log(`   Listening on port: ${PORT}                          `);
   console.log(`=======================================================`);
 });
+

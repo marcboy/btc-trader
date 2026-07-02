@@ -32,9 +32,10 @@ let state = {
   apiConfig: {
     apiKey: '',
     apiSecret: '',
-    proxyUrl: 'http://localhost:3000'
+    proxyUrl: window.location.origin
   }
 };
+
 
 // Chart Instance
 let priceChart = null;
