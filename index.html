@@ -21,6 +21,18 @@
 </head>
 <body>
 
+  <!-- Session Selector Overlay -->
+  <div id="session-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(8,11,17,0.98); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(12px);">
+    <div class="card" style="width: 90%; max-width: 500px; padding: 2rem; border-color: rgba(255,255,255,0.15);">
+      <h2 style="font-size: 1.5rem; text-align: center; font-weight: 700; margin-bottom: 0.5rem; background: linear-gradient(135deg, var(--primary), var(--success)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Select Trading Session</h2>
+      <p style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-bottom: 1.5rem;">Select a profile slots below to start trading. Enter a customized name for each session.</p>
+      
+      <div id="session-list" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+        <!-- 5 sessions will be rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
   <!-- Header / Navigation Bar -->
   <header>
     <div class="logo-container">
@@ -32,6 +44,10 @@
     </div>
     
     <div class="header-status">
+      <div id="active-session-badge" class="status-badge" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); color: var(--primary); font-weight: 600;">
+        User: <span id="active-session-name" style="margin-left: 0.25rem;">Default</span>
+      </div>
+      <button id="btn-switch-session" class="btn btn-secondary btn-xs" style="width: auto; padding: 0.35rem 0.75rem; border-radius: 20px;">Switch User</button>
       <div id="ws-status" class="status-badge">
         <span class="dot disconnected"></span> Connecting...
       </div>
@@ -287,7 +303,7 @@
 
   <!-- Version Badge -->
   <div id="version-badge" style="position: fixed; bottom: 10px; right: 10px; font-size: 0.65rem; color: var(--text-muted); background: rgba(0,0,0,0.4); padding: 4px 8px; border-radius: 4px; pointer-events: none; z-index: 9999;">
-    Built: 2026-07-02 12:40:30
+    Built: 2026-07-02 12:42:00
   </div>
 
   <!-- Main Logic Script -->

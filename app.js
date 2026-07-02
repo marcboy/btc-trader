@@ -53,47 +53,70 @@ if (window.location.search.includes('reset=true')) {
   window.location.replace(window.location.pathname);
 }
 
+// Session Management State
+let sessionState = {
+  currentSessionId: null,
+  sessions: [
+    { id: 1, name: 'Trader 1' },
+    { id: 2, name: 'Trader 2' },
+    { id: 3, name: 'Trader 3' },
+    { id: 4, name: 'Trader 4' },
+    { id: 5, name: 'Trader 5' }
+  ]
+};
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
-  loadFromStorage();
+  initSessionOverlay();
   initChart();
   connectWebSocket();
   setupEventListeners();
-  updateUI();
 });
 
-// Load state from localStorage
+// Load state from localStorage scoped by active user session
 function loadFromStorage() {
-  const savedSim = localStorage.getItem('apex_sim_portfolio');
+  const pfx = `session_${sessionState.currentSessionId}_`;
+  
+  const savedSim = localStorage.getItem(`${pfx}apex_sim_portfolio`);
   if (savedSim) {
     state.simPortfolio = JSON.parse(savedSim);
+  } else {
+    // Reset back to defaults if no previous session storage exists
+    state.simPortfolio = { usd: 10000, btc: 0, avgBuyPrice: 0, totalInvested: 0, activePositionId: null };
   }
   
-  const savedLogs = localStorage.getItem('apex_trade_log');
-  if (savedLogs) {
-    state.tradeLog = JSON.parse(savedLogs);
-  }
+  const savedLogs = localStorage.getItem(`${pfx}apex_trade_log`);
+  state.tradeLog = savedLogs ? JSON.parse(savedLogs) : [];
 
-  const savedApi = localStorage.getItem('apex_api_config');
+  const savedApi = localStorage.getItem(`${pfx}apex_api_config`);
   if (savedApi) {
     state.apiConfig = JSON.parse(savedApi);
+  } else {
+    state.apiConfig = { apiKey: '', apiSecret: '', proxyUrl: window.location.origin };
   }
   
-  const savedBot = localStorage.getItem('apex_bot_config');
+  const savedBot = localStorage.getItem(`${pfx}apex_bot_config`);
   if (savedBot) {
     const config = JSON.parse(savedBot);
     state.strategy = config.strategy || 'swing';
     state.threshold = Number(config.threshold) || 10;
     state.tradeAmount = Number(config.tradeAmount) || 100;
+  } else {
+    state.strategy = 'swing';
+    state.threshold = 10;
+    state.tradeAmount = 100;
   }
 }
 
-// Save state to localStorage and sync logs online
+// Save state to localStorage partitioned by user session
 function saveState() {
-  localStorage.setItem('apex_sim_portfolio', JSON.stringify(state.simPortfolio));
-  localStorage.setItem('apex_trade_log', JSON.stringify(state.tradeLog));
-  localStorage.setItem('apex_api_config', JSON.stringify(state.apiConfig));
-  localStorage.setItem('apex_bot_config', JSON.stringify({
+  if (!sessionState.currentSessionId) return;
+  const pfx = `session_${sessionState.currentSessionId}_`;
+
+  localStorage.setItem(`${pfx}apex_sim_portfolio`, JSON.stringify(state.simPortfolio));
+  localStorage.setItem(`${pfx}apex_trade_log`, JSON.stringify(state.tradeLog));
+  localStorage.setItem(`${pfx}apex_api_config`, JSON.stringify(state.apiConfig));
+  localStorage.setItem(`${pfx}apex_bot_config`, JSON.stringify({
     strategy: state.strategy,
     threshold: state.threshold,
     tradeAmount: state.tradeAmount
@@ -1067,6 +1090,16 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Switch User
+  const btnSwitchSession = document.getElementById('btn-switch-session');
+  if (btnSwitchSession) {
+    btnSwitchSession.addEventListener('click', () => {
+      // Pause bot before switching
+      toggleBot(false);
+      initSessionOverlay();
+    });
+  }
 }
 
 // Start / Pause Bot helper
@@ -1125,3 +1158,52 @@ function exportToCSV() {
   link.click();
   document.body.removeChild(link);
 }
+
+// Render dynamic session overlay list and mount actions
+function initSessionOverlay() {
+  const container = document.getElementById('session-list');
+  const overlay = document.getElementById('session-overlay');
+  if (!container || !overlay) return;
+
+  // Load custom session names from localStorage if they exist
+  sessionState.sessions.forEach(sess => {
+    const savedName = localStorage.getItem(`session_name_${sess.id}`);
+    if (savedName) sess.name = savedName;
+  });
+
+  overlay.style.display = 'flex';
+
+  container.innerHTML = sessionState.sessions.map(sess => `
+    <div style="display: flex; gap: 0.5rem; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 0.75rem; border-radius: 8px;">
+      <input type="text" id="session-name-input-${sess.id}" value="${sess.name}" style="flex: 1; height: 36px; padding: 0 0.5rem; background: rgba(0,0,0,0.5); font-size: 0.85rem;" placeholder="Session User Name">
+      <button class="btn btn-primary select-session-btn" data-id="${sess.id}" style="width: auto; padding: 0 1rem; height: 36px; font-size: 0.8rem; border-radius: 6px;">Select</button>
+    </div>
+  `).join('');
+
+  // Attach click listeners to selection buttons and name updates
+  container.querySelectorAll('.select-session-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = parseInt(e.target.dataset.id);
+      const nameInput = document.getElementById(`session-name-input-${id}`);
+      const sessionName = nameInput ? nameInput.value.trim() : `Trader ${id}`;
+      
+      // Save name customization
+      localStorage.setItem(`session_name_${id}`, sessionName);
+      
+      // Load session
+      sessionState.currentSessionId = id;
+      sessionState.sessions.find(s => s.id === id).name = sessionName;
+      
+      // Close modal overlay and load scoped portfolio settings
+      overlay.style.display = 'none';
+      
+      const badgeText = document.getElementById('active-session-name');
+      if (badgeText) badgeText.textContent = sessionName;
+      
+      loadFromStorage();
+      updateUI();
+      logSystemMessage(`Switched to Session ${id} - User: ${sessionName}`);
+    });
+  });
+}
+
