@@ -676,9 +676,14 @@ function updateUI() {
   }
   
   // 4. Statistics Block
+  const spotPriceEl = document.getElementById('stat-spot-price');
   const totalTradesEl = document.getElementById('stat-total-trades');
   const profitableTradesEl = document.getElementById('stat-profitable-trades');
   const totalProfitEl = document.getElementById('stat-total-profit');
+  
+  if (spotPriceEl && state.currentPrice) {
+    spotPriceEl.textContent = `$${state.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  }
   
   const trades = state.tradeLog.filter(t => t.status === state.mode);
   const sellTrades = trades.filter(t => t.type === 'SELL');
