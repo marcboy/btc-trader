@@ -110,9 +110,9 @@ async function fetchServerState() {
       state.referencePrice = s.referencePrice;
       state.buyTargetPrice = s.buyTargetPrice;
       state.sellTargetPrice = s.sellTargetPrice;
-      state.simPortfolio = s.simPortfolio;
-      state.tradeLog = s.tradeLog;
-      state.apiConfig = s.apiConfig;
+      state.simPortfolio = s.simPortfolio || {};
+      state.tradeLog = s.tradeLog || [];
+      state.apiConfig = s.apiConfig || {};
 
       // Animate price change ticks
       const priceEl = document.getElementById('price-val');
@@ -710,14 +710,18 @@ function renderTradeLogs() {
       ? `<span style="color: var(--success); font-weight: 600;">$${cumulativeProfit.toFixed(2)}</span>`
       : `<span style="color: var(--danger); font-weight: 600;">-$${Math.abs(cumulativeProfit).toFixed(2)}</span>`;
       
+    const priceVal = typeof log.price === 'number' ? `$${log.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : (log.price ? `$${log.price}` : '-');
+    const amountVal = typeof log.amount === 'number' ? `${log.amount.toFixed(6)} BTC` : (log.amount ? `${log.amount} BTC` : '-');
+    const totalUsdVal = typeof log.totalUsd === 'number' ? `$${log.totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : (log.totalUsd ? `$${log.totalUsd}` : '-');
+      
     return `
       <tr>
         <td><code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">${log.id ? log.id.replace('tx_', '') : '-'}</code></td>
         <td>${logDate}</td>
         <td><span class="log-type ${log.type.toLowerCase()}">${log.type}</span></td>
-        <td>$${log.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-        <td>${log.amount.toFixed(6)} BTC</td>
-        <td>$${log.totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+        <td>${priceVal}</td>
+        <td>${amountVal}</td>
+        <td>${totalUsdVal}</td>
         <td>${pnlDisplay}</td>
         <td>${cumulativeProfitDisplay}</td>
         <td><span class="log-status ${log.status}">${log.status.toUpperCase()}</span></td>
