@@ -141,6 +141,9 @@ function connectCoinbaseWebSocket() {
 
   wsConnection.on('open', () => {
     console.log('[Server] Coinbase WebSocket Connected.');
+    for (const id in globalState.sessions) {
+      logBotMessage(id, "WebSocket Connected: Live Coinbase BTC-USD tick stream active.");
+    }
     const subscribeMsg = {
       type: 'subscribe',
       product_ids: ['BTC-USD'],
@@ -167,6 +170,9 @@ function connectCoinbaseWebSocket() {
 
   wsConnection.on('close', () => {
     console.log('[Server WS Close] WebSocket connection closed. Reconnecting in 5s...');
+    for (const id in globalState.sessions) {
+      logBotMessage(id, "WebSocket Disconnected: Attempting reconnect to Coinbase feed in 5s...");
+    }
     clearTimeout(wsReconnectTimer);
     wsReconnectTimer = setTimeout(connectCoinbaseWebSocket, 5000);
   });
@@ -217,6 +223,14 @@ function handleNewPrice(price) {
     }
 
     if (session.isRunning) {
+      const nowMs = Date.now();
+      if (!session.lastTickLogTime || nowMs - session.lastTickLogTime > 15000) {
+        session.lastTickLogTime = nowMs;
+        const diff = price - session.referencePrice;
+        logBotMessage(session.id, `Live Check - Spot: $${price.toFixed(2)} (Ref: $${session.referencePrice.toFixed(2)}, Diff: $${diff.toFixed(2)}, Target Threshold: $${session.threshold})`);
+        stateModified = true; // Save log update to disk
+      }
+
       const triggered = runTradingBot(session, price);
       if (triggered) {
         stateModified = true;
