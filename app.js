@@ -44,15 +44,22 @@ let pollStateTimer = null;
 
 // Helper to determine active backend API URL
 function getApiUrl() {
+  const isOnline = window.location.origin.startsWith('http') && 
+                   !window.location.hostname.includes('localhost') && 
+                   !window.location.hostname.includes('127.0.0.1');
+                   
   let customUrl = localStorage.getItem('apex_backend_api_url');
   if (customUrl) {
     customUrl = customUrl.trim();
-    if (customUrl && !/^https?:\/\//i.test(customUrl)) {
-      customUrl = (customUrl.includes('localhost') || customUrl.includes('127.0.0.1'))
-        ? `http://${customUrl}`
-        : `https://${customUrl}`;
+    const isLocalCustom = customUrl.includes('localhost') || customUrl.includes('127.0.0.1') || customUrl.startsWith('file://');
+    
+    // Ignore custom URL if the page itself is loaded from an online hosting domain and the custom URL points to local
+    if (!(isOnline && isLocalCustom)) {
+      if (customUrl && !/^https?:\/\//i.test(customUrl)) {
+        customUrl = isLocalCustom ? `http://${customUrl}` : `https://${customUrl}`;
+      }
+      return customUrl.replace(/\/$/, ''); // Remove trailing slash if present
     }
-    return customUrl.replace(/\/$/, ''); // Remove trailing slash if present
   }
   
   if (window.location.origin.startsWith('file://') || window.location.origin === 'null') {
