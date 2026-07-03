@@ -257,12 +257,16 @@
         return;
       }
 
-      term.innerHTML = filtered.map(log => `
-        <div class="log-line">
-          <span class="log-time">[${log.time}]</span>
-          <span class="log-text">${log.message}</span>
-        </div>
-      `).join('');
+      term.innerHTML = filtered.map(log => {
+        const isTrade = log.message.includes('BUY') || log.message.includes('SELL');
+        const color = isTrade ? '#10b981' : '#9ca3af'; // Green for trades, grey for system checks
+        return `
+          <div class="log-line" style="color: ${color};">
+            <span class="log-time">[${log.time}]</span>
+            <span class="log-text">${log.message}</span>
+          </div>
+        `;
+      }).join('');
     }
 
     function renderTradeLogs() {

@@ -657,6 +657,9 @@ function renderConsoleLogs(logs) {
     item.style.padding = '0.15rem 0';
     item.style.borderBottom = '1px solid rgba(255,255,255,0.02)';
     
+    const isTrade = log.message.includes('BUY') || log.message.includes('SELL');
+    item.style.color = isTrade ? '#10b981' : '#9ca3af'; // Green for trades, grey for system events
+    
     const timeSpan = document.createElement('span');
     timeSpan.style.color = 'var(--text-muted)';
     timeSpan.style.marginRight = '0.5rem';
