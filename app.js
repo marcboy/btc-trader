@@ -214,21 +214,55 @@ async function initSessionOverlay() {
 
   overlay.style.display = 'flex';
   
+  // Read local cache backup of session names first
+  let localSessions = [];
+  try {
+    const localData = localStorage.getItem('apex_session_names');
+    if (localData) localSessions = JSON.parse(localData);
+  } catch (e) {}
+
   // Fetch session configurations from server
   try {
     const res = await fetch(`${getApiUrl()}/api/sessions`);
     if (res.ok) {
-      sessionState.sessions = await res.json();
+      const serverSessions = await res.json();
+      
+      // Merge: If server has default placeholder name but local storage has a customized name, use local
+      let needsSync = false;
+      sessionState.sessions = serverSessions.map(s => {
+        const localS = localSessions.find(ls => ls.id === s.id);
+        if (localS && localS.name && s.name.startsWith('Trader ') && !localS.name.startsWith('Trader ')) {
+          needsSync = true;
+          return { ...s, name: localS.name };
+        }
+        return s;
+      });
+
+      // Update backup cache
+      localStorage.setItem('apex_session_names', JSON.stringify(sessionState.sessions));
+
+      // Restore customization on the server if it was lost during a restart
+      if (needsSync) {
+        await fetch(`${getApiUrl()}/api/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sessionState.sessions)
+        });
+      }
     }
   } catch (err) {
-    console.warn("Could not load sessions from server:", err);
-    sessionState.sessions = [
-      { id: 1, name: 'Trader 1' },
-      { id: 2, name: 'Trader 2' },
-      { id: 3, name: 'Trader 3' },
-      { id: 4, name: 'Trader 4' },
-      { id: 5, name: 'Trader 5' }
-    ];
+    console.warn("Could not load sessions from server, using local fallbacks:", err);
+    if (localSessions && localSessions.length > 0) {
+      sessionState.sessions = localSessions;
+    } else {
+      sessionState.sessions = [
+        { id: 1, name: 'Trader 1' },
+        { id: 2, name: 'Trader 2' },
+        { id: 3, name: 'Trader 3' },
+        { id: 4, name: 'Trader 4' },
+        { id: 5, name: 'Trader 5' }
+      ];
+    }
   }
 
   container.innerHTML = sessionState.sessions.map(sess => `
@@ -247,6 +281,9 @@ async function initSessionOverlay() {
       
       sessionState.currentSessionId = id;
       sessionState.sessions.find(s => s.id === id).name = sessionName;
+      
+      // Update backup cache
+      localStorage.setItem('apex_session_names', JSON.stringify(sessionState.sessions));
       
       // Update configuration names on the server
       try {
