@@ -455,7 +455,7 @@ function setupEventListeners() {
   const btnViewLogs = document.getElementById('btn-view-logs');
   if (btnViewLogs) {
     btnViewLogs.addEventListener('click', () => {
-      window.open(`${getApiUrl()}/api/logs?sessionId=${sessionState.currentSessionId}`, '_blank');
+      window.open(`/logs.html?sessionId=${sessionState.currentSessionId}`, '_blank');
     });
   }
 

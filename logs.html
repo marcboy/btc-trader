@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apex Bot - System Logs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0; /* Left-aligned */
+    }
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+    .logs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    @media (max-width: 900px) {
+      .logs-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .log-terminal {
+      background: #040609;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #34d399;
+      height: 500px;
+      overflow-y: auto;
+      box-shadow: inset 0 4px 20px rgba(0,0,0,0.8);
+    }
+    .log-line {
+      padding: 0.25rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.02);
+      display: flex;
+    }
+    .log-time {
+      color: var(--text-muted);
+      margin-right: 0.75rem;
+      white-space: nowrap;
+    }
+    .log-text {
+      word-break: break-all;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+    .filter-bar select, .filter-bar input {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      outline: none;
+      font-family: var(--font-family);
+    }
+    .back-btn {
+      text-decoration: none;
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .back-btn:hover {
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logs-header">
+    <div>
+      <a href="/" class="back-btn">← Back to Dashboard</a>
+      <h1 style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; background: linear-gradient(135deg, var(--primary), var(--success)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">System Audit & Trade Logs</h1>
+    </div>
+    
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <label for="select-log-session" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Active Session:</label>
+      <select id="select-log-session" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.5rem; border-radius: 8px; font-family: var(--font-family); font-weight: 600;">
+        <option value="1">Trader 1</option>
+        <option value="2">Trader 2</option>
+        <option value="3">Trader 3</option>
+        <option value="4">Trader 4</option>
+        <option value="5">Trader 5</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="logs-grid">
+    <!-- Left Panel: Action Logs Feed -->
+    <div class="card" style="display: flex; flex-direction: column;">
+      <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <span>Bot Action Feed</span>
+        <button class="btn btn-secondary btn-xs" id="btn-copy-action-logs" style="width: auto;">Copy Logs</button>
+      </div>
+      
+      <div class="filter-bar">
+        <input type="text" id="action-search" placeholder="Search events..." style="flex: 1;">
+      </div>
+
+      <div class="log-terminal" id="action-terminal">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Right Panel: Trade Log History -->
+    <div class="card" style="display: flex; flex-direction: column;">
+      <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <span>Completed Trade Executions</span>
+        <button class="btn btn-secondary btn-xs" id="btn-copy-trade-logs" style="width: auto;">Copy CSV</button>
+      </div>
+
+      <div class="filter-bar">
+        <select id="filter-trade-mode">
+          <option value="all">All Modes</option>
+          <option value="simulated">Simulation</option>
+          <option value="live">Live</option>
+        </select>
+        <select id="filter-trade-type">
+          <option value="all">All Types</option>
+          <option value="BUY">BUY</option>
+          <option value="SELL">SELL</option>
+        </select>
+      </div>
+
+      <div class="table-container" style="flex: 1; max-height: 500px; overflow-y: auto; background: #040609; border-radius: 12px; border: 1px solid var(--border-color);">
+        <table style="width: 100%; border-collapse: collapse;">
+          <style>
+            th, td {
+              padding: 0.75rem;
+              text-align: left;
+              border-bottom: 1px solid rgba(255,255,255,0.03);
+              font-size: 0.8rem;
+            }
+            th {
+              background: rgba(255,255,255,0.02);
+              position: sticky;
+              top: 0;
+              z-index: 10;
+              color: var(--text-secondary);
+            }
+          </style>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Price</th>
+              <th>Amount</th>
+              <th>Total</th>
+              <th>PnL</th>
+              <th>Mode</th>
+            </tr>
+          </thead>
+          <tbody id="trade-logs-body">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeSessionId = 1;
+    let systemConsoleLogs = [];
+    let tradeLog = [];
+
+    // Helper to determine active backend API URL
+    function getApiUrl() {
+      const customUrl = localStorage.getItem('apex_backend_api_url');
+      if (customUrl) {
+        return customUrl.replace(/\/$/, '');
+      }
+      if (window.location.origin.startsWith('file://') || window.location.origin === 'null') {
+        return 'http://localhost:3000';
+      }
+      return window.location.origin;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Sync active session from URL query if present
+      const params = new URLSearchParams(window.location.search);
+      const queryId = parseInt(params.get('sessionId'));
+      if (queryId >= 1 && queryId <= 5) {
+        activeSessionId = queryId;
+        document.getElementById('select-log-session').value = queryId;
+      }
+
+      loadSessionList();
+      fetchLogs();
+      setupListeners();
+
+      // Poll logs every 2 seconds
+      setInterval(fetchLogs, 2000);
+    });
+
+    // Populate active session names in the selector
+    async function loadSessionList() {
+      const select = document.getElementById('select-log-session');
+      try {
+        const res = await fetch(`${getApiUrl()}/api/sessions`);
+        if (res.ok) {
+          const sessions = await res.json();
+          select.innerHTML = sessions.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+          select.value = activeSessionId;
+        }
+      } catch (err) {
+        console.warn("Could not sync session names:", err);
+      }
+    }
+
+    async function fetchLogs() {
+      try {
+        const res = await fetch(`${getApiUrl()}/api/dashboard-state?sessionId=${activeSessionId}`);
+        if (res.ok) {
+          const data = await res.json();
+          systemConsoleLogs = data.session.systemConsoleLogs || [];
+          tradeLog = data.session.tradeLog || [];
+          renderActionLogs();
+          renderTradeLogs();
+        }
+      } catch (err) {
+        console.error("Failed to fetch logs from server:", err);
+      }
+    }
+
+    function renderActionLogs() {
+      const term = document.getElementById('action-terminal');
+      const searchQuery = document.getElementById('action-search').value.toLowerCase().trim();
+      
+      let filtered = systemConsoleLogs;
+      if (searchQuery) {
+        filtered = systemConsoleLogs.filter(log => log.message.toLowerCase().includes(searchQuery));
+      }
+
+      if (filtered.length === 0) {
+        term.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding-top: 2rem;">No logs found.</div>';
+        return;
+      }
+
+      term.innerHTML = filtered.map(log => `
+        <div class="log-line">
+          <span class="log-time">[${log.time}]</span>
+          <span class="log-text">${log.message}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderTradeLogs() {
+      const body = document.getElementById('trade-logs-body');
+      const filterMode = document.getElementById('filter-trade-mode').value;
+      const filterType = document.getElementById('filter-trade-type').value;
+
+      let filtered = tradeLog;
+      if (filterMode !== 'all') {
+        filtered = filtered.filter(l => l.status === filterMode);
+      }
+      if (filterType !== 'all') {
+        filtered = filtered.filter(l => l.type === filterType);
+      }
+
+      if (filtered.length === 0) {
+        body.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No executions matching filters.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = filtered.map(log => {
+        const timeDisplay = new Date(log.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const pnlDisplay = log.type === 'SELL' 
+          ? (log.pnl >= 0 
+              ? `<span style="color: var(--success);">+$${log.pnl.toFixed(2)}</span>` 
+              : `<span style="color: var(--danger);">-$${Math.abs(log.pnl).toFixed(2)}</span>`)
+          : '-';
+
+        return `
+          <tr>
+            <td>${timeDisplay}</td>
+            <td><span class="log-type ${log.type.toLowerCase()}">${log.type}</span></td>
+            <td>$${log.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+            <td>${log.amount.toFixed(6)} BTC</td>
+            <td>$${log.totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+            <td>${pnlDisplay}</td>
+            <td><span class="log-status ${log.status}">${log.status.toUpperCase()}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function setupListeners() {
+      document.getElementById('select-log-session').addEventListener('change', (e) => {
+        activeSessionId = parseInt(e.target.value);
+        fetchLogs();
+      });
+
+      document.getElementById('action-search').addEventListener('input', renderActionLogs);
+      document.getElementById('filter-trade-mode').addEventListener('change', renderTradeLogs);
+      document.getElementById('filter-trade-type').addEventListener('change', renderTradeLogs);
+
+      // Copy action logs to clipboard
+      document.getElementById('btn-copy-action-logs').addEventListener('click', () => {
+        if (systemConsoleLogs.length === 0) {
+          alert("No logs to copy.");
+          return;
+        }
+        const text = systemConsoleLogs.map(l => `[${l.time}] ${l.message}`).join('\n');
+        navigator.clipboard.writeText(text)
+          .then(() => alert("Action logs copied to clipboard!"))
+          .catch(err => console.error("Could not copy:", err));
+      });
+
+      // Export trade logs to CSV text
+      document.getElementById('btn-copy-trade-logs').addEventListener('click', () => {
+        if (tradeLog.length === 0) {
+          alert("No trade data to copy.");
+          return;
+        }
+        let csv = "Time,Type,Price,Amount,TotalUSD,PnL,Mode\n";
+        tradeLog.forEach(l => {
+          csv += `${l.time},${l.type},${l.price},${l.amount},${l.totalUsd},${l.type === 'SELL' ? l.pnl : ''},${l.status}\n`;
+        });
+        navigator.clipboard.writeText(csv)
+          .then(() => alert("Trade history copied to clipboard as CSV!"))
+          .catch(err => console.error("Could not copy:", err));
+      });
+    }
+  </script>
+</body>
+</html>
