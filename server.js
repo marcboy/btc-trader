@@ -19,6 +19,7 @@ const STATE_FILE_PATH = path.join(__dirname, 'bot_state.json');
 let globalState = {
   currentPrice: null,
   priceHistory: [], // Array of { time, price } up to 100 points
+  priceVersion: 1,  // Incremented on every new price tick
   sessions: {
     1: createDefaultSession(1, 'Trader 1'),
     2: createDefaultSession(2, 'Trader 2'),
@@ -43,6 +44,8 @@ function logBotMessage(sessionId, message) {
     if (globalState.sessions[sessionId].systemConsoleLogs.length > 100) {
       globalState.sessions[sessionId].systemConsoleLogs.pop();
     }
+    // Increment version to notify client of new console logs
+    globalState.sessions[sessionId].stateVersion++;
   }
 }
 
@@ -50,6 +53,7 @@ function createDefaultSession(id, name) {
   return {
     id: id,
     name: name,
+    stateVersion: 1, // Incremented on configuration/portfolio changes
     isRunning: false,
     mode: 'simulated', // 'simulated' | 'live'
     strategy: 'swing', // 'swing' | 'trend' | 'cycle'
@@ -201,6 +205,7 @@ function recalculateTargets(session) {
 // Handle incoming price ticks
 function handleNewPrice(price) {
   globalState.currentPrice = price;
+  globalState.priceVersion++;
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -499,9 +504,22 @@ const server = http.createServer((req, res) => {
 
   // Endpoint: Get centralized state for dashboard UI
   if (req.method === 'GET' && parsedUrl.pathname === '/api/dashboard-state') {
+    const clientStateVersion = parseInt(parsedUrl.searchParams.get('stateVersion')) || 0;
+    const clientPriceVersion = parseInt(parsedUrl.searchParams.get('priceVersion')) || 0;
+    
     const session = globalState.sessions[querySessionId] || createDefaultSession(querySessionId, `Trader ${querySessionId}`);
     
+    // Cache Validation: If versions match, send a tiny 40-byte response
+    if (clientStateVersion === session.stateVersion && clientPriceVersion === globalState.priceVersion) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ changed: false, currentPrice: globalState.currentPrice }));
+      return;
+    }
+    
     const responsePayload = {
+      changed: true,
+      stateVersion: session.stateVersion,
+      priceVersion: globalState.priceVersion,
       currentPrice: globalState.currentPrice,
       priceHistory: globalState.priceHistory,
       session: {
@@ -691,6 +709,7 @@ const server = http.createServer((req, res) => {
         sessionsData.forEach(item => {
           if (globalState.sessions[item.id]) {
             globalState.sessions[item.id].name = item.name;
+            globalState.sessions[item.id].stateVersion++;
           }
         });
         saveStateToDisk();

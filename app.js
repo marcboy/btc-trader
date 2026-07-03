@@ -27,7 +27,11 @@ let state = {
   apiConfig: {
     apiKey: '',
     apiSecret: ''
-  }
+  },
+  
+  // Local cache validation version variables
+  stateVersion: 0,
+  priceVersion: 0
 };
 
 // Chart Instance
@@ -78,13 +82,28 @@ document.addEventListener('DOMContentLoaded', () => {
   startStatePolling();
 });
 
+// Tab Visibility Check: Stop polling server entirely if tab is in background
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (pollStateTimer) {
+      clearInterval(pollStateTimer);
+      pollStateTimer = null;
+    }
+  } else {
+    // Force full refresh on focus and resume polling
+    state.stateVersion = 0;
+    state.priceVersion = 0;
+    startStatePolling();
+  }
+});
+
 // Start Polling server dashboard state
 function startStatePolling() {
   if (pollStateTimer) clearInterval(pollStateTimer);
   
-  // Poll immediately, then every 1.5 seconds
+  // Poll immediately, then every 3.5 seconds to save bandwidth
   fetchServerState();
-  pollStateTimer = setInterval(fetchServerState, 1500);
+  pollStateTimer = setInterval(fetchServerState, 3500);
 }
 
 // Fetch dashboard state from server API
@@ -92,12 +111,36 @@ async function fetchServerState() {
   if (!sessionState.currentSessionId) return;
   
   try {
-    const res = await fetch(`${getApiUrl()}/api/dashboard-state?sessionId=${sessionState.currentSessionId}`);
+    const res = await fetch(`${getApiUrl()}/api/dashboard-state?sessionId=${sessionState.currentSessionId}&stateVersion=${state.stateVersion}&priceVersion=${state.priceVersion}`);
     if (res.ok) {
       const data = await res.json();
-      
-      // Update global state object
       const oldPrice = state.currentPrice;
+      
+      // Cache hits: No changes since last check
+      if (data.changed === false) {
+        state.currentPrice = data.currentPrice;
+        
+        // Sync spot price text element only
+        const priceValEl = document.getElementById('price-val');
+        if (priceValEl && state.currentPrice) {
+          priceValEl.textContent = `$${state.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        }
+        const spotPriceEl = document.getElementById('stat-spot-price');
+        if (spotPriceEl && state.currentPrice) {
+          spotPriceEl.textContent = `$${state.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        }
+        
+        // Update connection status
+        const statusIndicator = document.getElementById('ws-status');
+        if (statusIndicator) {
+          statusIndicator.innerHTML = '<span class="dot connected"></span> Live Price Feed';
+        }
+        return;
+      }
+      
+      // State cache miss: Full sync
+      state.stateVersion = data.stateVersion;
+      state.priceVersion = data.priceVersion;
       state.currentPrice = data.currentPrice;
       state.priceHistory = data.priceHistory || [];
       
@@ -221,6 +264,10 @@ async function initSessionOverlay() {
       
       const badgeText = document.getElementById('active-session-name');
       if (badgeText) badgeText.textContent = sessionName;
+      
+      // Reset version indexes to force full state refresh on the new session
+      state.stateVersion = 0;
+      state.priceVersion = 0;
       
       // Re-trigger server updates
       startStatePolling();
