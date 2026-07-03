@@ -284,6 +284,16 @@
               <button class="btn btn-success" id="btn-save-api" style="padding: 0.65rem; width: 100%;">Save Config</button>
             </div>
           </div>
+
+          <div class="settings-grid" style="grid-template-columns: 1fr;">
+            <div class="control-group">
+              <label for="input-backend-url">Backend API Server URL</label>
+              <input type="text" id="input-backend-url" placeholder="http://localhost:3000">
+              <span style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+                Specify the URL of your running backend server (e.g. <code>https://your-app.onrender.com</code>). Leave blank to use the same host.
+              </span>
+            </div>
+          </div>
           
           <div class="info-text">
             The bot handles WebSocket and Advanced Trade execution directly on the hosting server. Changes to targets and configurations sync instantly.

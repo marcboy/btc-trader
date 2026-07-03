@@ -42,6 +42,19 @@ let sessionState = {
 // Polling interval reference
 let pollStateTimer = null;
 
+// Helper to determine active backend API URL
+function getApiUrl() {
+  const customUrl = localStorage.getItem('apex_backend_api_url');
+  if (customUrl) {
+    return customUrl.replace(/\/$/, ''); // Remove trailing slash if present
+  }
+  
+  if (window.location.origin.startsWith('file://') || window.location.origin === 'null') {
+    return 'http://localhost:3000';
+  }
+  return window.location.origin;
+}
+
 // Initialize Dashboard Application
 document.addEventListener('DOMContentLoaded', () => {
   initChart();
@@ -66,7 +79,7 @@ async function fetchServerState() {
   if (!sessionState.currentSessionId) return;
   
   try {
-    const res = await fetch(`/api/dashboard-state?sessionId=${sessionState.currentSessionId}`);
+    const res = await fetch(`${getApiUrl()}/api/dashboard-state?sessionId=${sessionState.currentSessionId}`);
     if (res.ok) {
       const data = await res.json();
       
@@ -109,6 +122,8 @@ async function fetchServerState() {
       
       // Render Console logs
       renderConsoleLogs(s.systemConsoleLogs);
+    } else {
+      throw new Error(`Server responded with status ${res.status}`);
     }
   } catch (err) {
     console.error("Dashboard failed to fetch server state:", err);
@@ -123,7 +138,7 @@ async function fetchServerState() {
 async function updateServerConfig(payload) {
   if (!sessionState.currentSessionId) return;
   try {
-    const res = await fetch(`/api/configure?sessionId=${sessionState.currentSessionId}`, {
+    const res = await fetch(`${getApiUrl()}/api/configure?sessionId=${sessionState.currentSessionId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -145,7 +160,7 @@ async function initSessionOverlay() {
   
   // Fetch session configurations from server
   try {
-    const res = await fetch('/api/sessions');
+    const res = await fetch(`${getApiUrl()}/api/sessions`);
     if (res.ok) {
       sessionState.sessions = await res.json();
     }
@@ -179,7 +194,7 @@ async function initSessionOverlay() {
       
       // Update configuration names on the server
       try {
-        await fetch('/api/sessions', {
+        await fetch(`${getApiUrl()}/api/sessions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(sessionState.sessions)
@@ -202,13 +217,19 @@ async function initSessionOverlay() {
 
 // Setup Event Listeners
 function setupEventListeners() {
+  // Load backend URL input value
+  const backendUrlInput = document.getElementById('input-backend-url');
+  if (backendUrlInput) {
+    backendUrlInput.value = localStorage.getItem('apex_backend_api_url') || '';
+  }
+
   // Start/Pause Bot Button
   const toggleBtn = document.getElementById('btn-toggle-bot');
   if (toggleBtn) {
     toggleBtn.addEventListener('click', async () => {
       const targetState = !state.isRunning;
       try {
-        const res = await fetch(`/api/toggle?sessionId=${sessionState.currentSessionId}`, {
+        const res = await fetch(`${getApiUrl()}/api/toggle?sessionId=${sessionState.currentSessionId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ isRunning: targetState })
@@ -317,13 +338,13 @@ function setupEventListeners() {
       
       // Stop the bot first for safety on mode toggle
       try {
-        await fetch(`/api/toggle?sessionId=${sessionState.currentSessionId}`, {
+        await fetch(`${getApiUrl()}/api/toggle?sessionId=${sessionState.currentSessionId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ isRunning: false })
         });
         
-        await fetch(`/api/api-config?sessionId=${sessionState.currentSessionId}`, {
+        await fetch(`${getApiUrl()}/api/api-config?sessionId=${sessionState.currentSessionId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -346,8 +367,16 @@ function setupEventListeners() {
       const keyVal = document.getElementById('input-api-key').value.trim();
       const secVal = document.getElementById('input-api-secret').value.trim();
       
+      // Store custom Backend API URL locally
+      const backendUrlVal = document.getElementById('input-backend-url').value.trim();
+      if (backendUrlVal) {
+        localStorage.setItem('apex_backend_api_url', backendUrlVal);
+      } else {
+        localStorage.removeItem('apex_backend_api_url');
+      }
+
       try {
-        const res = await fetch(`/api/api-config?sessionId=${sessionState.currentSessionId}`, {
+        const res = await fetch(`${getApiUrl()}/api/api-config?sessionId=${sessionState.currentSessionId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -357,8 +386,8 @@ function setupEventListeners() {
           })
         });
         if (res.ok) {
-          alert("API Credentials saved on the 24/7 server session.");
-          fetchServerState();
+          alert("API and server settings saved successfully.");
+          startStatePolling();
         } else {
           alert("Error saving API credentials.");
         }
@@ -374,7 +403,7 @@ function setupEventListeners() {
     btnClearLogs.addEventListener('click', async () => {
       if (confirm(`Are you sure you want to clear your trade logs for ${state.mode.toUpperCase()} mode?`)) {
         try {
-          const res = await fetch(`/api/clear-logs?sessionId=${sessionState.currentSessionId}`, { method: 'POST' });
+          const res = await fetch(`${getApiUrl()}/api/clear-logs?sessionId=${sessionState.currentSessionId}`, { method: 'POST' });
           if (res.ok) fetchServerState();
         } catch (e) {
           console.error(e);
@@ -389,7 +418,7 @@ function setupEventListeners() {
     btnResetPortfolio.addEventListener('click', async () => {
       if (confirm("Reset virtual simulated portfolio back to $10,000 USD?")) {
         try {
-          const res = await fetch(`/api/reset-portfolio?sessionId=${sessionState.currentSessionId}`, { method: 'POST' });
+          const res = await fetch(`${getApiUrl()}/api/reset-portfolio?sessionId=${sessionState.currentSessionId}`, { method: 'POST' });
           if (res.ok) fetchServerState();
         } catch (err) {
           console.error(err);
@@ -420,7 +449,7 @@ function setupEventListeners() {
   const btnViewLogs = document.getElementById('btn-view-logs');
   if (btnViewLogs) {
     btnViewLogs.addEventListener('click', () => {
-      window.open(`/api/logs?sessionId=${sessionState.currentSessionId}`, '_blank');
+      window.open(`${getApiUrl()}/api/logs?sessionId=${sessionState.currentSessionId}`, '_blank');
     });
   }
 
