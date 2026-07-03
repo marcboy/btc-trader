@@ -44,8 +44,14 @@ let pollStateTimer = null;
 
 // Helper to determine active backend API URL
 function getApiUrl() {
-  const customUrl = localStorage.getItem('apex_backend_api_url');
+  let customUrl = localStorage.getItem('apex_backend_api_url');
   if (customUrl) {
+    customUrl = customUrl.trim();
+    if (customUrl && !/^https?:\/\//i.test(customUrl)) {
+      customUrl = (customUrl.includes('localhost') || customUrl.includes('127.0.0.1'))
+        ? `http://${customUrl}`
+        : `https://${customUrl}`;
+    }
     return customUrl.replace(/\/$/, ''); // Remove trailing slash if present
   }
   
@@ -129,7 +135,7 @@ async function fetchServerState() {
     console.error("Dashboard failed to fetch server state:", err);
     const statusIndicator = document.getElementById('ws-status');
     if (statusIndicator) {
-      statusIndicator.innerHTML = '<span class="dot disconnected"></span> Server Disconnected';
+      statusIndicator.innerHTML = `<span class="dot disconnected"></span> Disconnected (${getApiUrl()})`;
     }
   }
 }
