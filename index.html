@@ -268,10 +268,10 @@
         
         <div class="settings-content collapsed" id="settings-accordion-content">
           <div class="alert-info">
-            <strong>Security Notice:</strong> Your API Credentials are saved exclusively in your browser's local sandbox storage (`localStorage`). They are never uploaded to any third-party servers. Since Web Browsers restrict direct exchange queries due to CORS policies, a lightweight local Node.js proxy server is required to sign requests and execute real orders safely.
+            <strong>Security Notice:</strong> Your API Credentials are saved securely within your active trading session on the hosting server. They are never shared publicly. Placing them on the server enables the bot to monitor prices and execute orders 24/7 even when your web dashboard is closed.
           </div>
           
-          <div class="settings-grid">
+          <div class="settings-grid" style="grid-template-columns: 2fr 2fr 1fr;">
             <div class="control-group">
               <label for="input-api-key">Coinbase API Key</label>
               <input type="password" id="input-api-key" placeholder="Enter Coinbase API Key Name">
@@ -280,20 +280,13 @@
               <label for="input-api-secret">Coinbase API Secret</label>
               <input type="password" id="input-api-secret" placeholder="Enter Coinbase API Secret Key">
             </div>
-          </div>
-          
-          <div class="settings-grid" style="grid-template-columns: 2fr 1fr;">
-            <div class="control-group">
-              <label for="input-proxy-url">Local Proxy Backend Server URL</label>
-              <input type="text" id="input-proxy-url" value="http://localhost:3000" placeholder="http://localhost:3000">
-            </div>
             <div class="control-group" style="display: flex; align-items: flex-end;">
-              <button class="btn btn-success" id="btn-save-api" style="padding: 0.65rem;">Save Config</button>
+              <button class="btn btn-success" id="btn-save-api" style="padding: 0.65rem; width: 100%;">Save Config</button>
             </div>
           </div>
           
           <div class="info-text">
-            To run the API Proxy locally: run <code>node server.js</code> in this directory. Read the <a href="README.md" target="_blank">instructions in README.md</a> for setup details and security settings.
+            The bot handles WebSocket and Advanced Trade execution directly on the hosting server. Changes to targets and configurations sync instantly.
           </div>
         </div>
       </div>
